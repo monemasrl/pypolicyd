@@ -1,0 +1,33 @@
+#!/usr/bin/make -f
+
+SHELL := sh -e
+
+%:
+	dh $@
+
+# override_dh_auto_install:
+# 	install -D -m 0755 pypolicyd $$(pwd)/debian/pypolicyd/usr/local/bin/pypolicyd
+# export PYBUILD_NAME = pypolicyd
+# export PYBUILD_SYSTEM = distutils
+# # Tests can only be run from the tar archive or once installed as
+# # pypolicyd instances are launch during testing
+# export PYBUILD_DISABLE = test
+
+# %:
+# 	dh $@ --with python3 --buildsystem=pybuild
+
+# override_dh_auto_install:
+# 	dh_auto_install
+# 	# Installa lo script di controllo
+# 	install -D -m 755 pypolicyd-ctl debian/pypolicyd/usr/bin/pypolicyd-ctl
+# 	install -D -m 755 pypolicyd debian/pypolicyd/usr/bin/pypolicyd
+
+# override_dh_installdocs:
+# 	dh_installdocs
+# 	# Installa la documentazione aggiuntiva se presente
+# 	if [ -f README.md ]; then install -D -m 644 README.md debian/pypolicyd/usr/share/doc/pypolicyd/README.md; fi
+
+# override_dh_fixperms:
+# 	dh_fixperms
+# 	# Assicura che lo script di controllo sia eseguibile
+# 	chmod 755 debian/pypolicyd/usr/bin/pypolicyd-ctl

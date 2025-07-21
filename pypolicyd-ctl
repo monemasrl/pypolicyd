@@ -1,0 +1,241 @@
+#!/bin/bash
+
+# Script di controllo per pypolicyd
+# Fornisce funzionalità aggiuntive per la gestione del demone
+
+DAEMON_NAME="pypolicyd"
+PID_FILE="/var/run/pypolicyd/pypolicyd.pid"
+LOG_FILE="/var/log/pypolicyd/pypolicyd.log"
+CONFIG_FILE="/etc/pypolicyd/main.yml"
+POLICY_RULES_FILE="/etc/pypolicyd/policy-rules.yml"
+
+# Colori per output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+print_status() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+get_pid() {
+    if [ -f "$PID_FILE" ]; then
+        cat "$PID_FILE"
+    else
+        echo ""
+    fi
+}
+
+is_running() {
+    local pid=$(get_pid)
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+status() {
+    if is_running; then
+        local pid=$(get_pid)
+        print_status "$DAEMON_NAME è in esecuzione (PID: $pid)"
+        return 0
+    else
+        print_warning "$DAEMON_NAME non è in esecuzione"
+        return 1
+    fi
+}
+
+start() {
+    if is_running; then
+        print_warning "$DAEMON_NAME è già in esecuzione"
+        return 1
+    fi
+    
+    print_status "Avvio di $DAEMON_NAME..."
+    systemctl start $DAEMON_NAME
+    
+    sleep 2
+    
+    if is_running; then
+        print_status "$DAEMON_NAME avviato con successo"
+        return 0
+    else
+        print_error "Errore nell'avvio di $DAEMON_NAME"
+        return 1
+    fi
+}
+
+stop() {
+    if ! is_running; then
+        print_warning "$DAEMON_NAME non è in esecuzione"
+        return 1
+    fi
+    
+    print_status "Arresto di $DAEMON_NAME..."
+    systemctl stop $DAEMON_NAME
+    
+    # Attendi fino a 10 secondi per l'arresto
+    local count=0
+    while is_running && [ $count -lt 10 ]; do
+        sleep 1
+        count=$((count + 1))
+    done
+    
+    if is_running; then
+        print_error "Errore nell'arresto di $DAEMON_NAME"
+        return 1
+    else
+        print_status "$DAEMON_NAME arrestato con successo"
+        return 0
+    fi
+}
+
+restart() {
+    print_status "Riavvio di $DAEMON_NAME..."
+    stop
+    sleep 1
+    start
+}
+
+reload_config() {
+    if ! is_running; then
+        print_error "$DAEMON_NAME non è in esecuzione"
+        return 1
+    fi
+    
+    print_status "Ricaricamento configurazione di $DAEMON_NAME..."
+    systemctl reload $DAEMON_NAME
+    print_status "Configurazione ricaricata"
+}
+
+show_logs() {
+    local lines=${1:-50}
+    
+    if [ ! -f "$LOG_FILE" ]; then
+        print_error "File di log non trovato: $LOG_FILE"
+        return 1
+    fi
+    
+    echo "Ultimi $lines righe di log:"
+    tail -n "$lines" "$LOG_FILE"
+}
+
+follow_logs() {
+    if [ ! -f "$LOG_FILE" ]; then
+        print_error "File di log non trovato: $LOG_FILE"
+        return 1
+    fi
+    
+    print_status "Seguendo i log (Ctrl+C per uscire)..."
+    tail -f "$LOG_FILE"
+}
+
+test_config() {
+    if [ ! -f "$CONFIG_FILE" ]; then
+        print_error "File di configurazione non trovato: $CONFIG_FILE"
+        return 1
+    fi
+    
+    print_status "Verifica configurazione..."
+    
+    # Testa se il YAML è valido
+    if python3 -c "import yaml; yaml.safe_load(open('$CONFIG_FILE'))" >/dev/null 2>&1; then
+        print_status "Configurazione principale valida"
+    else
+        print_error "Configurazione principale non valida (errore YAML)"
+        return 1
+    fi
+    
+    # Testa anche il file delle policy rules se esiste
+    if [ -f "$POLICY_RULES_FILE" ]; then
+        if python3 -c "import yaml; yaml.safe_load(open('$POLICY_RULES_FILE'))" >/dev/null 2>&1; then
+            print_status "File regole policy valido"
+        else
+            print_error "File regole policy non valido (errore YAML)"
+            return 1
+        fi
+    else
+        print_warning "File regole policy non trovato: $POLICY_RULES_FILE"
+    fi
+    
+    print_status "Configurazione valida"
+    return 0
+}
+
+show_info() {
+    echo "=== Informazioni $DAEMON_NAME ==="
+    echo "Servizio: $DAEMON_NAME"
+    echo "PID File: $PID_FILE"
+    echo "Log File: $LOG_FILE"
+    echo "Config File: $CONFIG_FILE"
+    echo "Policy Rules File: $POLICY_RULES_FILE"
+    echo
+    
+    echo "=== Status Systemd ==="
+    systemctl status $DAEMON_NAME --no-pager
+    echo
+    
+    echo "=== Status Demone ==="
+    status
+}
+
+usage() {
+    echo "Uso: $0 {start|stop|restart|status|reload|logs|follow-logs|test-config|info}"
+    echo
+    echo "Comandi:"
+    echo "  start       - Avvia il demone"
+    echo "  stop        - Ferma il demone"
+    echo "  restart     - Riavvia il demone"
+    echo "  status      - Mostra lo stato del demone"
+    echo "  reload      - Ricarica la configurazione"
+    echo "  logs [N]    - Mostra gli ultimi N righe di log (default: 50)"
+    echo "  follow-logs - Segue i log in tempo reale"
+    echo "  test-config - Verifica la validità della configurazione"
+    echo "  info        - Mostra informazioni complete sul demone"
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    status)
+        status
+        ;;
+    reload)
+        reload_config
+        ;;
+    logs)
+        show_logs "$2"
+        ;;
+    follow-logs)
+        follow_logs
+        ;;
+    test-config)
+        test_config
+        ;;
+    info)
+        show_info
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+esac
+
+exit $?

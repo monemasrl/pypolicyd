@@ -1,0 +1,64 @@
+#!/bin/bash
+# Script post-installazione per pypolicyd
+
+set -e
+
+case "$1" in
+    configure)
+        # Crea l'utente e gruppo pypolicyd se non esistono
+        if ! getent group pypolicyd >/dev/null 2>&1; then
+            addgroup --system pypolicyd
+        fi
+
+        if ! getent passwd pypolicyd >/dev/null 2>&1; then
+            adduser --system --ingroup pypolicyd --home /var/lib/pypolicyd \
+                    --shell /bin/false --comment "PyPolicy Daemon" pypolicyd
+        fi
+
+        # Crea le directory necessarie con i permessi corretti
+        install -d -o pypolicyd -g pypolicyd -m 0755 /var/lib/pypolicyd
+        install -d -o pypolicyd -g pypolicyd -m 0755 /var/log/pypolicyd
+        install -d -o pypolicyd -g pypolicyd -m 0755 /var/run/pypolicyd
+
+        # Imposta i permessi sui file di configurazione
+        if [ -f /etc/pypolicyd/main.yml ]; then
+            chown root:pypolicyd /etc/pypolicyd/main.yml
+            chmod 640 /etc/pypolicyd/main.yml
+        fi
+        
+        if [ -f /etc/pypolicyd/policy-rules.yml ]; then
+            chown root:pypolicyd /etc/pypolicyd/policy-rules.yml
+            chmod 640 /etc/pypolicyd/policy-rules.yml
+        fi
+        
+        # Ricarica systemd
+        if [ -d /run/systemd/system ]; then
+            systemctl daemon-reload
+        fi
+        
+        # Abilita il servizio (ma non lo avvia automaticamente)
+        if [ -d /run/systemd/system ]; then
+            systemctl enable pypolicyd.service || true
+        fi
+        
+        echo "PyPolicyd installato con successo!"
+        echo "Configurazione: /etc/pypolicyd/"
+        echo "Logs: /var/log/pypolicyd/"
+        echo "Comandi:"
+        echo "  sudo systemctl start pypolicyd"
+        echo "  sudo systemctl status pypolicyd"
+        echo "  sudo pypolicyd-ctl status"
+        ;;
+        
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+
+    *)
+        echo "Script postinst chiamato con argomento sconosciuto \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

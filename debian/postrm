@@ -1,0 +1,38 @@
+#!/bin/bash
+# Script post-rimozione per pypolicyd
+
+set -e
+
+case "$1" in
+    purge)
+        # Rimuovi i file di configurazione e dati
+        rm -rf /etc/pypolicyd
+        rm -rf /var/lib/pypolicyd
+        rm -rf /var/log/pypolicyd
+        rm -rf /var/run/pypolicyd
+        
+        # Rimuovi l'utente pypolicyd se esiste
+        if getent passwd pypolicyd >/dev/null 2>&1; then
+            deluser --quiet --system pypolicyd || true
+        fi
+
+        # Rimuovi il gruppo pypolicyd se esiste
+        if getent group pypolicyd >/dev/null 2>&1; then
+            delgroup --quiet --system pypolicyd || true
+        fi
+
+        echo "PyPolicyd completamente rimosso dal sistema."
+        ;;
+
+    remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        ;;
+
+    *)
+        echo "Script postrm chiamato con argomento sconosciuto \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

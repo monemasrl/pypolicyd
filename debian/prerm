@@ -1,0 +1,23 @@
+#!/bin/bash
+# Scrip#!/bin/bash
+# Script pre-rimozione per pypolicyd
+
+set -e
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        # Ferma il servizio se è in esecuzione
+        if [ -x "$(command -v systemctl)" ]; then
+            systemctl stop pypolicyd.service || true
+            systemctl disable pypolicyd.service || true
+        fi
+        ;;
+
+    failed-upgrade)
+        ;;
+
+    *)
+        echo "Script prerm chiamato con argomento sconosciuto '$1'" >&2
+        exit 1
+        ;;
+esac

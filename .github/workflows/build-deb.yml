@@ -1,0 +1,160 @@
+name: Build Debian Package
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        ubuntu-version: ['24.04']
+    
+    container:
+      image: ubuntu:${{ matrix.ubuntu-version }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Update package lists
+      run: |
+        apt-get update
+        apt-get install -y ca-certificates
+    
+    - name: Install build dependencies
+      run: |
+        apt-get install -y \
+          build-essential \
+          devscripts \
+          debhelper \
+          dh-python \
+          python3-all \
+          python3-setuptools \
+          python3-yaml \
+          python3-pip \
+          lintian \
+          git
+    
+    - name: Set package version
+      id: version
+      shell: bash
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/v}
+        else
+          VERSION=$(date +%Y%m%d%H%M%S)-${GITHUB_SHA::8}
+        fi
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "Package version: $VERSION"
+    
+    - name: Update debian/changelog
+      shell: bash
+      run: |
+        cat > debian/changelog << EOF
+        pypolicyd (${{ steps.version.outputs.VERSION }}-1) unstable; urgency=medium
+        
+          * Automated build from GitHub Actions
+          * Commit: ${GITHUB_SHA::8}
+        
+         -- GitHub Actions <noreply@github.com>  $(date -R)
+        
+        EOF
+        cat debian/changelog.orig >> debian/changelog || true
+    
+    - name: Validate configuration files
+      run: |
+        python3 -c "import yaml; yaml.safe_load(open('etc/pypolicyd/main.yml'))"
+        python3 -m py_compile src/pypolicyd/smtp_policy_daemon.py
+        python3 -m py_compile src/pypolicyd/policy_rules.py
+        python3 -m py_compile src/pypolicyd/smtp-policy-ctl.py
+    
+    - name: Run tests
+      run: |
+        python3 test_new_config.py
+    
+    - name: Build package
+      run: |
+        dpkg-buildpackage -us -uc -b
+    
+    - name: Run lintian checks
+      run: |
+        lintian --no-tag-display-limit ../pypolicyd_*.deb || true
+    
+    - name: Create build artifacts directory
+      run: |
+        mkdir -p build-artifacts
+        cp ../pypolicyd_*.deb build-artifacts/
+        cp ../pypolicyd_*.buildinfo build-artifacts/ || true
+        cp ../pypolicyd_*.changes build-artifacts/ || true
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: pypolicyd-deb-ubuntu-${{ matrix.ubuntu-version }}
+        path: build-artifacts/
+        retention-days: 30
+    
+    - name: Test package installation
+      run: |
+        dpkg -i build-artifacts/pypolicyd_*.deb || true
+        apt-get install -f -y
+        
+        # Verify files are installed
+        test -f /usr/bin/pypolicyd
+        test -f /etc/pypolicyd/main.yml
+        test -f /lib/systemd/system/pypolicyd.service
+        test -f /usr/bin/pypolicyd-ctl
+        
+        # Test configuration
+        python3 /usr/lib/python3/dist-packages/pypolicyd/smtp-policy-ctl.py --help
+        
+        echo "✅ Package installation test passed"
+
+  test-on-different-python:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: ['3.12']
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Test Python compatibility
+      run: |
+        python -m py_compile src/pypolicyd/smtp_policy_daemon.py
+        python -m py_compile src/pypolicyd/policy_rules.py
+        python -m py_compile src/pypolicyd/smtp-policy-ctl.py
+        python test_new_config.py
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build-deb, test-on-different-python]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          pypolicyd-deb-ubuntu-*/pypolicyd_*.deb
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,31 @@
+# Policy Rules per test.com
+# File: policy-rules.d/test.com.yml
+
+# Regola generale per il dominio (più restrittiva)
+"*@test.com":
+  max_recipients: 10
+  max_size: "5M"
+  rate_limits:
+    - "5/1m"         # Max 5 email al minuto
+    - "50/1h"        # Max 50 email all'ora
+    - "500/1d"       # Max 500 email al giorno
+    - "10000/1M"     # Max 10000 email al mese
+
+# Utenti specifici del dominio
+"support@test.com":
+  max_recipients: 50
+  max_size: "20M"
+  rate_limits:
+    - "10/1m"        # Max 10 email al minuto
+    - "100/1h"       # Max 100 email all'ora
+    - "1000/1d"      # Max 1000 email al giorno
+    - "20000/1M"     # Max 20000 email al mese
+
+"admin@test.com":
+  max_recipients: 25
+  max_size: "15M"
+  rate_limits:
+    - "8/1m"         # Max 8 email al minuto
+    - "80/1h"        # Max 80 email all'ora
+    - "800/1d"       # Max 800 email al giorno
+    - "15000/1M"     # Max 15000 email al mese

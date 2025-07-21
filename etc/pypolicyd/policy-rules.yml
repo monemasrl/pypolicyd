@@ -1,0 +1,13 @@
+# Regole Policy SMTP
+# Una riga per utente e/o dominio
+# Formato: *@dominio per domini, utente@dominio per utenti specifici
+
+# Domini
+# "*@premium.com":
+#   max_recipients: 500
+#   max_size: "100M"
+#   rate_limits:
+#     - "100/1m"       # Max 100 email al minuto
+#     - "2000/1h"      # Max 2000 email all'ora
+#     - "20000/1d"     # Max 20000 email al giorno
+#     - "500000/1M"    # Max 500000 email al mese

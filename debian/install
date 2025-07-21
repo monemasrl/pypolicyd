@@ -1,0 +1,10 @@
+usr/lib/python3/dist-packages/pypolicyd /usr/lib/python3/dist-packages/
+pypolicyd /usr/bin/
+pypolicyd-ctl /usr/bin/
+README.md /usr/share/doc/pypolicyd/
+etc/pypolicyd/main.yml /etc/pypolicyd/
+etc/pypolicyd/policy-rules.yml /etc/pypolicyd/
+etc/pypolicyd/policy-rules.d/company.com.yml /etc/pypolicyd/policy-rules.d/
+etc/pypolicyd/policy-rules.d/example.com.yml /etc/pypolicyd/policy-rules.d/
+etc/pypolicyd/policy-rules.d/test.com.yml /etc/pypolicyd/policy-rules.d/
+etc/pypolicyd/policy-rules.d/README.md /etc/pypolicyd/policy-rules.d/

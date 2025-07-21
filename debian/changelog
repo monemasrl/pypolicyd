@@ -1,0 +1,11 @@
+pypolicyd (1.0.0-1) unstable; urgency=medium
+
+  * Initial release (renamed from pypolicyd to pypolicyd)
+  * Template completo per demoni Python con SMTP policy
+  * Integrazione systemd con sicurezza avanzata
+  * Gestione utenti e permessi
+  * Sistema di logging configurabile
+  * Rate limiting multi-finestra temporale
+  * Configurazione modulare per domini
+
+ -- Andrea Bettarini <bettarini@monema.it>  Mon, 20 Jul 2025 22:55:00 +0000

@@ -1,0 +1,34 @@
+[Unit]
+Description=PyPolicyd - Python SMTP Policy Daemon
+Documentation=man:pypolicyd(8)
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=pypolicyd
+Group=pypolicyd
+ExecStart=/usr/bin/pypolicyd
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+StartLimitInterval=0
+
+# Sicurezza
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/pypolicyd /var/run/pypolicyd /var/lib/pypolicyd
+
+# Directory di lavoro
+WorkingDirectory=/var/lib/pypolicyd
+
+# Gestione PID
+PIDFile=/var/run/pypolicyd/pypolicyd.pid
+
+# Limiti
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

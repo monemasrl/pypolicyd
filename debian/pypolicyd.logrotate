@@ -1,0 +1,11 @@
+/var/log/pypolicyd/*.log {
+    weekly
+    rotate 4
+    compress
+    missingok
+    notifempty
+    create 0640 pypolicyd pypolicyd
+    postrotate
+        systemctl restart pypolicyd >/dev/null 2>&1 || true
+    endscript
+}

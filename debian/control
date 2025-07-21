@@ -1,0 +1,27 @@
+Source: pypolicyd
+Section: admin
+Priority: optional
+Maintainer: Andrea Bettarini <bettarini@monema.it>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+
+Package: pypolicyd
+Architecture: all
+Depends: python3,
+         python3-yaml,
+         systemd,
+         adduser
+Section: mail
+Priority: optional
+Enhances: postfix
+Description: Python daemon template with SMTP policy support
+ PyPolicyd is a Python daemon template with SMTP policy functionality for Postfix.
+ It provides rate limiting, size controls, and configurable rules for email delivery.
+ .
+ Features:
+  - SMTP policy daemon for Postfix integration
+  - Rate limiting with multiple time windows
+  - User and domain-specific policies  
+  - SQLite database for state persistence
+  - Systemd integration with security restrictions
+  - Configurable logging and monitoring
