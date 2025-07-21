@@ -70,13 +70,9 @@ jobs:
     - name: Validate configuration files
       run: |
         python3 -c "import yaml; yaml.safe_load(open('etc/pypolicyd/main.yml'))"
-        python3 -m py_compile src/pypolicyd/smtp_policy_daemon.py
-        python3 -m py_compile src/pypolicyd/policy_rules.py
-        python3 -m py_compile src/pypolicyd/smtp-policy-ctl.py
-    
-    - name: Run tests
-      run: |
-        python3 test_new_config.py
+        python3 -m py_compile usr/lib/python3/dist-packages/pypolicyd/smtp_policy_daemon.py
+        python3 -m py_compile usr/lib/python3/dist-packages/pypolicyd/policy_rules.py
+        python3 -m py_compile usr/lib/python3/dist-packages/pypolicyd/smtp-policy-ctl.py
     
     - name: Build package
       run: |
@@ -134,9 +130,9 @@ jobs:
         
     - name: Test Python compatibility
       run: |
-        python -m py_compile src/pypolicyd/smtp_policy_daemon.py
-        python -m py_compile src/pypolicyd/policy_rules.py
-        python -m py_compile src/pypolicyd/smtp-policy-ctl.py
+        python -m py_compile usr/lib/python3/dist-packages/pypolicyd/smtp_policy_daemon.py
+        python -m py_compile usr/lib/python3/dist-packages/pypolicyd/policy_rules.py
+        python -m py_compile usr/lib/python3/dist-packages/pypolicyd/smtp-policy-ctl.py
         python test_new_config.py
 
   release:
