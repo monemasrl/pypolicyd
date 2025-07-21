@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import sys
-sys.path.insert(0, "/usr/local/lib")  
+import asyncio
+sys.path.insert(0, "/usr/lib/python3/dist-packages")  
 
 from pypolicyd.smtp_policy_daemon import main
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

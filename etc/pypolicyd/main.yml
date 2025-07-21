@@ -17,13 +17,19 @@ smtp_policy:
   
   # Configurazione logging SMTP
   log_level: "INFO"
-  log_file: "/var/log/pypolicyd/smtp-policy.log"
-  log_to_syslog: false
-  syslog_facility: "mail"
-  log_request: "rejected"  # all, rejected, none
+  # Opzioni di output log (scegli una):
+  # 1. Log su file
+  # log_file: "/var/log/pypolicyd/smtp-policy.log"
+  # 2. Log su syslog (imposta log_to_syslog: true e commenta log_file)
+  log_to_syslog: true
+  syslog_facility: "mail"  # mail, daemon, user, local0-local7
+  # 3. Default: stdout (commenta sia log_file che log_to_syslog)
   
-  # Configurazione avanzata
-  enable_advanced_rates: true
+  # Configurazione dettagli logging
+  log_request: "all"       # all, rejected, none
+  log_connection: true     # true, false
+  
+  # Configurazione generale
   cleanup_interval: 300
   
   # File o directory delle regole policy
