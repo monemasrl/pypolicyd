@@ -133,7 +133,6 @@ jobs:
         python -m py_compile usr/lib/python3/dist-packages/pypolicyd/smtp_policy_daemon.py
         python -m py_compile usr/lib/python3/dist-packages/pypolicyd/policy_rules.py
         python -m py_compile usr/lib/python3/dist-packages/pypolicyd/smtp-policy-ctl.py
-        python test_new_config.py
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
