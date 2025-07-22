@@ -25,9 +25,7 @@ class TestPolicyConfig(unittest.TestCase):
         self.config_data = {
             'daemon': {
                 'max_connections': 100,
-                'log_level': 'INFO'
-            },
-            'smtp_policy': {
+                'log_level': 'INFO',
                 'host': '127.0.0.1',
                 'port': 10031,
                 'database': '/tmp/test_rate_limits.db',
@@ -46,7 +44,7 @@ class TestPolicyConfig(unittest.TestCase):
         
         # Crea directory per le regole
         self.rules_dir = tempfile.mkdtemp()
-        self.config_data['smtp_policy']['policy_rules_file'] = self.rules_dir
+        self.config_data['daemon']['policy_rules_file'] = self.rules_dir
         
         # Ricrea il file di configurazione con il path corretto
         with open(self.config_file, 'w') as f:
@@ -69,7 +67,7 @@ class TestPolicyConfig(unittest.TestCase):
         # Verifica che la configurazione sia caricata correttamente
         self.assertIsInstance(config.config, dict)
         self.assertEqual(config.config['daemon']['max_connections'], 100)
-        self.assertEqual(config.config['smtp_policy']['port'], 10031)
+        self.assertEqual(config.config['daemon']['port'], 10031)
     
     def test_get_daemon_config(self):
         """Test estrazione configurazione daemon"""

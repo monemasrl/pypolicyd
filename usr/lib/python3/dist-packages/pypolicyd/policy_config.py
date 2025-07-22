@@ -37,7 +37,7 @@ class PolicyConfig:
     
     def get_smtp_policy_config(self) -> Dict[str, Any]:
         """Restituisce configurazione smtp_policy"""
-        return self.config.get('smtp_policy', {})
+        return self.config.get('daemon', {})
     
     def get_daemon_config(self) -> Dict[str, Any]:
         """Restituisce configurazione daemon"""
@@ -52,30 +52,8 @@ class PolicyConfig:
         # Se non c'è, usa DUNNO come default per Postfix
         return 'DUNNO'
     
-    def load_policy_rules(self, rules_file: str) -> Dict[str, Any]:
-        """Carica regole policy da file"""
-        rules_file_path = Path(rules_file)
-        
-        if not rules_file_path.exists():
-            if self.debug:
-                print(f"[DEBUG] File regole non trovato: {rules_file}")
-            return {}
-        
-        try:
-            with open(rules_file_path, 'r') as f:
-                rules = yaml.safe_load(f)
-            
-            if self.debug:
-                print(f"[DEBUG] Regole caricate da {rules_file}: {rules}")
-                
-            return rules or {}
-            
-        except yaml.YAMLError as e:
-            logging.error(f"Errore parsing regole da {rules_file}: {e}")
-            return {}
-    
     def load_policy_rules_dir(self, rules_dir: str) -> Dict[str, Any]:
-        """Carica regole da directory policy-rules.d"""
+        """Carica regole da directory policy-rules.d con nuovo formato gerarchico"""
         rules_dir_path = Path(rules_dir)
         
         if not rules_dir_path.exists() or not rules_dir_path.is_dir():
@@ -93,15 +71,39 @@ class PolicyConfig:
                 with open(rules_file, 'r') as f:
                     rules = yaml.safe_load(f)
                 
-                if rules:
-                    # Merge delle regole
+                if rules and 'domains' in rules:
+                    # Nuovo formato gerarchico con domains
+                    for domain_config in rules['domains']:
+                        domain_name = domain_config.get('name')
+                        if not domain_name:
+                            continue
+                        
+                        # Processa domain_limits come regola wildcard
+                        if 'domain_limits' in domain_config:
+                            domain_key = f"*@{domain_name}"
+                            all_rules[domain_key] = domain_config['domain_limits'].copy()
+                            
+                            if self.debug:
+                                print(f"[DEBUG] Domain limits per {domain_name}: {all_rules[domain_key]}")
+                        
+                        # Processa utenti specifici
+                        if 'users' in domain_config:
+                            for user_email, user_policy in domain_config['users'].items():
+                                all_rules[user_email] = user_policy.copy()
+                                
+                                if self.debug:
+                                    print(f"[DEBUG] User policy per {user_email}: {all_rules[user_email]}")
+                
+                elif rules:
+                    # Formato legacy: merge diretto delle regole
+                    if self.debug:
+                        print(f"[DEBUG] Formato legacy rilevato in {rules_file}")
+                    
                     for rule_key, rule_value in rules.items():
-                        # Se il valore è un dizionario, è una policy complessa
-                        # Se è una stringa, è una policy semplice (ACCEPT/REJECT/DUNNO)
                         all_rules[rule_key] = rule_value
                 
                 if self.debug:
-                    print(f"[DEBUG] Regole caricate da {rules_file}: {rules}")
+                    print(f"[DEBUG] Regole caricate da {rules_file}: {len(rules.get('domains', rules))} entry")
                     
             except yaml.YAMLError as e:
                 logging.error(f"Errore parsing regole da {rules_file}: {e}")

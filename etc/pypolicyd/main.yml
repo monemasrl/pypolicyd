@@ -9,6 +9,8 @@ daemon:
   log_level: "INFO"
   host: "127.0.0.1"
   port: 10040
+  database: "/var/lib/pypolicyd/policy.db" 
+  max_connections: 100
   # Configurazione logging SMTP
   # Opzioni di output log (scegli una):
   # 1. Log su file
@@ -24,11 +26,8 @@ daemon:
   
   # Configurazione generale
   cleanup_interval: 300
-  # File o directory delle regole policy
-  # Usa directory modulare per organizzare le regole per dominio
+  # Directory delle regole policy con formato gerarchico
   policy_rules_file: "/etc/pypolicyd/policy-rules.d"
-  # Oppure usa file singolo per retrocompatibilità:
-  # policy_rules_file: "/etc/pypolicyd/policy-rules.yml"
 
 # Policy di default per tutti gli utenti (quando non specificato altrove)
 default_policy:

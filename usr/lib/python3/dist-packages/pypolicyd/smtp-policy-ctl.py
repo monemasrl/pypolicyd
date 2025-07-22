@@ -128,7 +128,7 @@ def test_config(config_file):
             errors.append("Manca 'default_policy'")
         
         # Controlla se esiste il file delle policy rules
-        policy_rules_file = config.get('smtp_policy', {}).get('policy_rules_file', '/etc/pypolicyd/policy-rules.yml')
+        policy_rules_file = config.get('daemon', {}).get('policy_rules_file', '/etc/pypolicyd/policy-rules.yml')
         
         # Se stiamo testando localmente, adatta i path
         if config_file.startswith('etc/'):
@@ -168,7 +168,7 @@ def show_user_policy(config_file, username):
         return
     
     # Carica le policy rules dal file o directory separato
-    policy_rules_file = config.get('smtp_policy', {}).get('policy_rules_file', '/etc/pypolicyd/policy-rules.yml')
+    policy_rules_file = config.get('daemon', {}).get('policy_rules_file', '/etc/pypolicyd/policy-rules.yml')
     
     # Se stiamo testando localmente, adatta i path
     if config_file.startswith('etc/'):

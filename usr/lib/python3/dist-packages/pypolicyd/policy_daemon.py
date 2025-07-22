@@ -36,16 +36,8 @@ class PolicyDaemon:
         self.db_path = daemon_config.get('database', '/var/lib/pypolicyd/rate_limits.db')
         self.cleanup_interval = daemon_config.get('cleanup_interval', 3600)
         
-        # File regole policy - supporta sia directory che file singolo
-        policy_rules_config = daemon_config.get('policy_rules_file', '/etc/pypolicyd/policy-rules.d')
-        if policy_rules_config.endswith('.yml'):
-            # File singolo
-            self.rules_file = policy_rules_config
-            self.rules_dir = None
-        else:
-            # Directory
-            self.rules_file = None
-            self.rules_dir = policy_rules_config
+        # Directory regole policy - solo directory supportata
+        self.rules_dir = daemon_config.get('policy_rules_file', '/etc/pypolicyd/policy-rules.d')
         
         # Store SQLite
         self.rate_limit_store = RateLimitStore(self.db_path)
@@ -70,31 +62,21 @@ class PolicyDaemon:
         print(f"Bind: {self.bind_host}:{self.bind_port}")
         print(f"Max connections: {self.max_connections}")
         print(f"Rate limit DB: {self.db_path}")
-        if self.rules_file:
-            print(f"Policy rules file: {self.rules_file}")
-        if self.rules_dir:
-            print(f"Policy rules dir: {self.rules_dir}")
+        print(f"Policy rules dir: {self.rules_dir}")
         print(f"Policy rules loaded: {len(self.policy_rules)} rules")
         print(f"Default policy: {self.config.get_default_policy()}")
         print(f"Debug mode: {self.debug}")
         print("=" * 30)
     
     def load_policy_rules(self):
-        """Carica regole policy"""
+        """Carica regole policy da directory"""
         self.policy_rules = {}
         
-        if self.rules_file:
-            # Carica da file singolo
-            main_rules = self.config.load_policy_rules(self.rules_file)
-            self.policy_rules = main_rules.copy()
+        # Carica da directory
+        dir_rules = self.config.load_policy_rules_dir(self.rules_dir)
         
-        if self.rules_dir:
-            # Carica da directory
-            dir_rules = self.config.load_policy_rules_dir(self.rules_dir)
-            
-            # Merge delle regole - ora le regole sono direttamente chiave->valore
-            for rule_key, rule_value in dir_rules.items():
-                self.policy_rules[rule_key] = rule_value
+        # Le regole sono già nel formato chiave->valore corretto
+        self.policy_rules = dir_rules.copy()
         
         if self.debug:
             print(f"[DEBUG] Regole policy caricate: {self.policy_rules}")

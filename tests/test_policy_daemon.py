@@ -26,18 +26,23 @@ class TestPolicyDaemon(unittest.TestCase):
         # File di configurazione principale
         self.config_data = {
             'daemon': {
-                'max_connections': 50,
-                'log_level': 'INFO'
-            },
-            'smtp_policy': {
+                'name': 'pypolicyd',
+                'pid_file': '/tmp/test_pypolicyd.pid',
+                'log_file': '/tmp/test_pypolicyd.log',
+                'log_level': 'INFO',
                 'host': '127.0.0.1',
                 'port': 10031,
                 'database': '/tmp/test_rate_limits.db',
-                'default_policy': 'DUNNO',
                 'cleanup_interval': 3600,
                 'policy_rules_file': '/tmp/test_rules.d',
-                'log_destination': 'stdout',
-                'log_request': 'all'
+                'log_to_syslog': False,
+                'log_request': 'all',
+                'max_connections': 50
+            },
+            'default_policy': {
+                'max_recipients': 50,
+                'max_size': '25M',
+                'rate_limits': ['10/1m', '100/1h', '1000/1d']
             }
         }
         
@@ -48,7 +53,7 @@ class TestPolicyDaemon(unittest.TestCase):
         
         # Crea directory per le regole
         self.rules_dir = tempfile.mkdtemp()
-        self.config_data['smtp_policy']['policy_rules_file'] = self.rules_dir
+        self.config_data['daemon']['policy_rules_file'] = self.rules_dir
         
         # Ricrea il file di configurazione con il path corretto
         with open(self.config_file, 'w') as f:
@@ -73,38 +78,62 @@ class TestPolicyDaemon(unittest.TestCase):
             os.unlink(db_path)
     
     def create_test_rules(self):
-        """Crea regole di test"""
+        """Crea regole di test con nuovo formato gerarchico"""
         # Regole per example.com
         example_rules = {
-            'user@example.com': {
-                'max_recipients': 25,
-                'max_size': '10M',
-                'rate_limits': ['5/1m', '50/1h', '500/1d']
-            },
-            'marketing@example.com': {
-                'max_recipients': 1000,
-                'max_size': '25M',
-                'rate_limits': ['100/1m', '1000/1h', '10000/1d']
-            },
-            '*@example.com': {
-                'max_recipients': 10,
-                'max_size': '5M',
-                'rate_limits': ['3/1m', '30/1h', '300/1d']
-            }
+            'domains': [
+                {
+                    'name': 'example.com',
+                    'domain_limits': {
+                        'max_recipients': 100,
+                        'max_size': '50M',
+                        'rate_limits': ['300/1h', '3000/1d']
+                    },
+                    'users': {
+                        'user@example.com': {
+                            'max_recipients': 25,
+                            'max_size': '10M',
+                            'rate_limits': ['5/1m', '50/1h', '500/1d']
+                        },
+                        'marketing@example.com': {
+                            'max_recipients': 1000,
+                            'max_size': '25M',
+                            'rate_limits': ['100/1m', '1000/1h', '10000/1d']
+                        },
+                        '*@example.com': {
+                            'max_recipients': 10,
+                            'max_size': '5M',
+                            'rate_limits': ['3/1m', '30/1h', '300/1d']
+                        }
+                    }
+                }
+            ]
         }
         
         # Regole per company.com
         company_rules = {
-            'ceo@company.com': {
-                'max_recipients': 500,
-                'max_size': '100M',
-                'rate_limits': ['50/1m', '500/1h', '5000/1d']
-            },
-            '*@company.com': {
-                'max_recipients': 100,
-                'max_size': '50M',
-                'rate_limits': ['20/1m', '200/1h', '2000/1d']
-            }
+            'domains': [
+                {
+                    'name': 'company.com',
+                    'domain_limits': {
+                        'max_recipients': 500,
+                        'max_size': '100M',
+                        'rate_limits': ['2000/1h', '20000/1d']
+                    },
+                    'users': {
+                        'ceo@company.com': {
+                            'max_recipients': 500,
+                            'max_size': '100M',
+                            'rate_limits': ['50/1m', '500/1h', '5000/1d']
+                        },
+                        '*@company.com': {
+                            'max_recipients': 100,
+                            'max_size': '50M',
+                            'rate_limits': ['20/1m', '200/1h', '2000/1d']
+                        }
+                    }
+                }
+            ]
         }
         
         # Scrivi i file delle regole
@@ -113,7 +142,7 @@ class TestPolicyDaemon(unittest.TestCase):
         
         with open(os.path.join(self.rules_dir, 'company.yml'), 'w') as f:
             yaml.dump(company_rules, f)
-    
+
     def test_daemon_initialization(self):
         """Test inizializzazione daemon"""
         daemon = PolicyDaemon(self.config_file, debug=False)
@@ -158,9 +187,7 @@ class TestPolicyDaemonAsync(unittest.IsolatedAsyncioTestCase):
         self.config_data = {
             'daemon': {
                 'max_connections': 50,
-                'log_level': 'INFO'
-            },
-            'smtp_policy': {
+                'log_level': 'INFO',
                 'host': '127.0.0.1',
                 'port': 10031,
                 'database': '/tmp/test_rate_limits.db',
@@ -179,7 +206,7 @@ class TestPolicyDaemonAsync(unittest.IsolatedAsyncioTestCase):
         
         # Crea directory per le regole
         self.rules_dir = tempfile.mkdtemp()
-        self.config_data['smtp_policy']['policy_rules_file'] = self.rules_dir
+        self.config_data['daemon']['policy_rules_file'] = self.rules_dir
         
         # Ricrea il file di configurazione con il path corretto
         with open(self.config_file, 'w') as f:
