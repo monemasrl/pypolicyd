@@ -70,11 +70,176 @@ The daemon implements a policy system for Postfix with simplified configuration:
 ### Configuration Files
 
 - **`main.yml`**: Main daemon configuration (logging, database, ports, default policies)
-- **`policy-rules.yml`**: Specific rules for users and domains
+- **`policy-rules.d/`**: Directory with modular policy rules organized by domain (recommended)
+- **`policy-rules.yml`**: Single file with all policy rules (legacy compatibility)
 
-### Policy Rules Format
+## Configuration Reference
 
-The `policy-rules.yml` file uses a simple format:
+### main.yml Parameters
+
+The main configuration file `/etc/pypolicyd/main.yml` contains all daemon settings organized in sections:
+
+#### Daemon Configuration
+
+```yaml
+daemon:
+  name: "pypolicyd"                              # Service name
+  pid_file: "/var/run/pypolicyd/pypolicyd.pid"   # PID file location
+  log_file: "/var/log/pypolicyd/pypolicyd.log"   # Main log file
+  log_level: "INFO"                              # DEBUG, INFO, WARNING, ERROR
+```
+
+#### SMTP Policy Configuration
+
+```yaml
+smtp_policy:
+  config_file: "/etc/pypolicyd/main.yml"         # This configuration file
+  database: "/var/lib/pypolicyd/policy.db"       # SQLite database path
+  host: "127.0.0.1"                              # Listen address
+  port: 10040                                    # Listen port (Postfix policy)
+  
+  # Logging Configuration
+  log_level: "INFO"                              # Policy-specific log level
+  log_file: "/var/log/pypolicyd/smtp-policy.log" # Policy log file
+  log_to_syslog: false                           # Enable syslog logging
+  syslog_facility: "mail"                        # Syslog facility (mail, daemon, local0-7)
+  log_request: "rejected"                        # Log level: all, rejected, none
+  
+  # Advanced Settings
+  enable_advanced_rates: true                    # Enable multi-window rate tracking
+  cleanup_interval: 300                          # Database cleanup interval (seconds)
+  
+  # Policy Rules Location
+  policy_rules_file: "/etc/pypolicyd/policy-rules.d"  # Directory for modular rules
+  # OR for single file:
+  # policy_rules_file: "/etc/pypolicyd/policy-rules.yml"
+```
+
+#### Default Policy Settings
+
+```yaml
+default_policy:
+  max_recipients: 50        # Default max recipients per email
+  max_size: "25M"          # Default max email size (K, M, G suffixes)
+  rate_limits:             # Default rate limits (applied when no specific rule)
+    - "10/1m"             # 10 emails per minute
+    - "100/1h"            # 100 emails per hour  
+    - "1000/1d"           # 1000 emails per day
+```
+
+#### Database Configuration
+
+```yaml
+database:
+  type: "sqlite"                                 # Database type (currently only SQLite)
+  path: "/var/lib/pypolicyd/policy.db"          # Database file path
+```
+
+#### Monitoring Configuration
+
+```yaml
+monitoring:
+  enabled: true                                  # Enable performance monitoring
+  interval: 60                                  # Monitoring interval (seconds)
+  metrics_file: "/var/log/pypolicyd/metrics.log" # Metrics output file
+```
+
+### Policy Rules Configuration
+
+#### Directory Structure (Recommended)
+
+Using the modular approach with `/etc/pypolicyd/policy-rules.d/`:
+
+```
+/etc/pypolicyd/policy-rules.d/
+├── README.md              # Documentation for rule organization
+├── company.com.yml        # Rules for company.com domain
+├── example.com.yml        # Rules for example.com domain  
+└── test.com.yml          # Rules for test.com domain
+```
+
+Each file contains domain-specific policies:
+
+**example.com.yml:**
+```yaml
+smtp_domains:
+  "example.com":
+    # Domain-wide limits (affect all users in domain)
+    domain_limits:
+      rate_limits: ["1000/1h", "10000/1d"]
+      max_recipients: 100
+      max_size: "50M"
+    
+    # Individual user policies
+    users:
+      "admin@example.com":
+        rate_limits: ["100/1h", "1000/1d"]
+        max_recipients: 100
+        max_size: "50M"
+      
+      "user@example.com":
+        rate_limits: ["50/1h", "500/1d"]
+        max_recipients: 50
+        max_size: "25M"
+      
+      # Wildcard for all users in domain
+      "*@example.com":
+        rate_limits: ["20/1h", "200/1d"]
+        max_recipients: 25
+        max_size: "10M"
+```
+
+#### Rate Limiting Hierarchy
+
+The system enforces hierarchical rate limiting:
+
+1. **Domain-level limits**: Apply to all users in the domain
+2. **User-specific limits**: Cannot exceed domain limits
+3. **Wildcard rules**: Default for users without specific rules
+
+Example of hierarchical enforcement:
+
+```yaml
+smtp_domains:
+  "company.com":
+    domain_limits:
+      rate_limits: ["500/1h"]    # Domain maximum: 500/hour
+    users:
+      "admin@company.com":
+        rate_limits: ["100/1h"]  # User limit: 100/hour (within domain limit)
+      "*@company.com":
+        rate_limits: ["50/1h"]   # Default for other users: 50/hour
+```
+
+#### Rate Limit Formats
+
+Rate limits use the format `count/window`:
+
+- **Time units**: `s` (seconds), `m` (minutes), `h` (hours), `d` (days)
+- **Examples**: 
+  - `"10/1m"` = 10 emails per minute
+  - `"100/1h"` = 100 emails per hour
+  - `"1000/1d"` = 1000 emails per day
+
+#### Size Formats
+
+Email size limits support standard suffixes:
+
+- **Units**: `K` (kilobytes), `M` (megabytes), `G` (gigabytes)
+- **Examples**: `"10M"`, `"500K"`, `"1G"`
+
+#### Authentication Matching
+
+Policy matching prioritizes SASL authentication:
+
+1. **Primary**: `sasl_username` (authenticated user)
+2. **Fallback**: `sender` (envelope sender for compatibility)
+
+This ensures policies are applied to the authenticated user, not just the message sender.
+
+### Legacy Single File Format
+
+For backward compatibility, you can still use a single `/etc/pypolicyd/policy-rules.yml` file:
 
 ```yaml
 # Domain rules (applied to all users in the domain)
@@ -98,12 +263,12 @@ The `policy-rules.yml` file uses a simple format:
 
 ### Features
 
-- **Multi-window Rate Limiting**: Supports seconds (s), minutes (m), hours (h), days (d), months (M)
+- **Multi-window Rate Limiting**: Supports seconds (s), minutes (m), hours (h), days (d)
 - **Size Limits**: Message size limits (K, M, G)
 - **Recipient Limits**: Number of recipients limit per email
-- **Policy Hierarchy**: Specific users override domain rules
-- **Validation**: User policies cannot exceed domain policies
-
+- **Policy Hierarchy**: Domain limits enforced, user-specific policies cannot exceed them
+- **Modular Configuration**: Organize policies by domain using the `policy-rules.d/` directory
+- **SASL Authentication**: Policies applied based on authenticated user (sasl_username)
 ## Notes
 
 - The daemon will run as `pypolicyd` user
