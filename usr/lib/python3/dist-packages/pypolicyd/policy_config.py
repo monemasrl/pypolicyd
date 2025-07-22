@@ -6,6 +6,7 @@ import yaml
 import logging
 from pathlib import Path
 from typing import Dict, Any, Union, List, Union, Optional
+from .logging_service import PolicyLoggingService
 
 
 class PolicyConfig:
@@ -15,8 +16,11 @@ class PolicyConfig:
         self.config_file = config_file
         self.debug = debug
         self.config = {}
+
         self.load_config()
-    
+        self.logging_service = PolicyLoggingService(self.config, debug=self.debug)
+        self.logging_service.log_startup(f"Loaded configuration from {self.config_file}")
+            
     def load_config(self):
         """Carica configurazione da file YAML"""
         try:

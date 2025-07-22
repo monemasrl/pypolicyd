@@ -7,16 +7,9 @@ daemon:
   pid_file: "/var/run/pypolicyd/pypolicyd.pid"
   log_file: "/var/log/pypolicyd/pypolicyd.log"
   log_level: "INFO"
-
-# Configurazione SMTP Policy
-smtp_policy:
-  config_file: "/etc/pypolicyd/main.yml"
-  database: "/var/lib/pypolicyd/policy.db"
   host: "127.0.0.1"
   port: 10040
-  
   # Configurazione logging SMTP
-  log_level: "INFO"
   # Opzioni di output log (scegli una):
   # 1. Log su file
   # log_file: "/var/log/pypolicyd/smtp-policy.log"
@@ -31,7 +24,6 @@ smtp_policy:
   
   # Configurazione generale
   cleanup_interval: 300
-  
   # File o directory delle regole policy
   # Usa directory modulare per organizzare le regole per dominio
   policy_rules_file: "/etc/pypolicyd/policy-rules.d"
@@ -46,11 +38,6 @@ default_policy:
     - "10/1m"           # 10 email al minuto
     - "100/1h"          # 100 email all'ora
     - "1000/1d"         # 1000 email al giorno
-
-# Configurazione database
-database:
-  type: "sqlite"
-  path: "/var/lib/pypolicyd/policy.db"
   
 # Configurazione monitoring
 monitoring:

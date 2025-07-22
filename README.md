@@ -29,8 +29,7 @@ pypolicyd/
 ├── src/                       # Python source code
 │   └── pypolicyd/
 │       ├── __init__.py
-│       ├── smtp_policy_daemon.py  # Main SMTP Policy Daemon (includes daemon functionality)
-│       └── policy_rules.py       # Policy rules management
+│       └── smtp_policy_daemon.py  # Main SMTP Policy Daemon (includes daemon functionality)
 ├── etc/                       # Configuration files
 │   └── pypolicyd/
 │       ├── main.yml           # Main configuration

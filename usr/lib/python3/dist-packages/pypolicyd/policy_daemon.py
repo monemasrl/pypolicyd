@@ -26,19 +26,18 @@ class PolicyDaemon:
         
         # Configurazione daemon
         daemon_config = self.config.get_daemon_config()
-        smtp_config = self.config.get_smtp_policy_config()
         
         # Host e porta dal config SMTP policy (non daemon)
-        self.bind_host = smtp_config.get('host', '127.0.0.1')
-        self.bind_port = smtp_config.get('port', 10031)
+        self.bind_host = daemon_config.get('host', '127.0.0.1')
+        self.bind_port = daemon_config.get('port', 10031)
         self.max_connections = daemon_config.get('max_connections', 100)
         
         # Configurazione SMTP policy
-        self.db_path = smtp_config.get('database', '/var/lib/pypolicyd/rate_limits.db')
-        self.cleanup_interval = smtp_config.get('cleanup_interval', 3600)
+        self.db_path = daemon_config.get('database', '/var/lib/pypolicyd/rate_limits.db')
+        self.cleanup_interval = daemon_config.get('cleanup_interval', 3600)
         
         # File regole policy - supporta sia directory che file singolo
-        policy_rules_config = smtp_config.get('policy_rules_file', '/etc/pypolicyd/policy-rules.d')
+        policy_rules_config = daemon_config.get('policy_rules_file', '/etc/pypolicyd/policy-rules.d')
         if policy_rules_config.endswith('.yml'):
             # File singolo
             self.rules_file = policy_rules_config
@@ -52,7 +51,7 @@ class PolicyDaemon:
         self.rate_limit_store = RateLimitStore(self.db_path)
         
         # Configura servizio di logging
-        self.logging_service = PolicyLoggingService(smtp_config, debug=self.debug)
+        self.logging_service = PolicyLoggingService(daemon_config, debug=self.debug)
         
         # Server
         self.server = None

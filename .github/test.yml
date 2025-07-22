@@ -49,7 +49,6 @@ jobs:
     - name: Test Python modules compilation
       run: |
         python -m py_compile src/pypolicyd/smtp_policy_daemon.py
-        python -m py_compile src/pypolicyd/policy_rules.py
         python -m py_compile src/pypolicyd/smtp-policy-ctl.py
     
     - name: Run configuration tests
