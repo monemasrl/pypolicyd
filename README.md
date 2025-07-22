@@ -87,12 +87,6 @@ daemon:
   pid_file: "/var/run/pypolicyd/pypolicyd.pid"   # PID file location
   log_file: "/var/log/pypolicyd/pypolicyd.log"   # Main log file
   log_level: "INFO"                              # DEBUG, INFO, WARNING, ERROR
-```
-
-#### SMTP Policy Configuration
-
-```yaml
-smtp_policy:
   config_file: "/etc/pypolicyd/main.yml"         # This configuration file
   database: "/var/lib/pypolicyd/policy.db"       # SQLite database path
   host: "127.0.0.1"                              # Listen address
@@ -125,14 +119,6 @@ default_policy:
     - "10/1m"             # 10 emails per minute
     - "100/1h"            # 100 emails per hour  
     - "1000/1d"           # 1000 emails per day
-```
-
-#### Database Configuration
-
-```yaml
-database:
-  type: "sqlite"                                 # Database type (currently only SQLite)
-  path: "/var/lib/pypolicyd/policy.db"          # Database file path
 ```
 
 #### Monitoring Configuration
