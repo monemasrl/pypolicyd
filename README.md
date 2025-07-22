@@ -148,31 +148,31 @@ Each file contains domain-specific policies:
 
 **example.com.yml:**
 ```yaml
-smtp_domains:
-  "example.com":
-    # Domain-wide limits (affect all users in domain)
-    domain_limits:
-      rate_limits: ["1000/1h", "10000/1d"]
-      max_recipients: 100
-      max_size: "50M"
-    
-    # Individual user policies
-    users:
-      "admin@example.com":
-        rate_limits: ["100/1h", "1000/1d"]
+domains:
+    - name: "example.com"
+      # Domain-wide limits (affect all users in domain)
+      domain_limits:
+        rate_limits: ["1000/1h", "10000/1d"]
         max_recipients: 100
         max_size: "50M"
       
-      "user@example.com":
-        rate_limits: ["50/1h", "500/1d"]
-        max_recipients: 50
-        max_size: "25M"
-      
-      # Wildcard for all users in domain
-      "*@example.com":
-        rate_limits: ["20/1h", "200/1d"]
-        max_recipients: 25
-        max_size: "10M"
+      # Individual user policies
+      users:
+        "admin@example.com":
+          rate_limits: ["100/1h", "1000/1d"]
+          max_recipients: 100
+          max_size: "50M"
+        
+        "user@example.com":
+          rate_limits: ["50/1h", "500/1d"]
+          max_recipients: 50
+          max_size: "25M"
+        
+        # Wildcard for all users in domain
+        "*@example.com":
+          rate_limits: ["20/1h", "200/1d"]
+          max_recipients: 25
+          max_size: "10M"
 ```
 
 #### Rate Limiting Hierarchy
