@@ -258,10 +258,11 @@ class PolicyDaemon:
                     print(f"[DEBUG] Rate limit {rate_limit.rate_str} per regola {rule_key or user}: {current_count}/{rate_limit.count} (allowed: {allowed})")
                 
                 if not allowed:
-                    reject_msg = f"REJECT Rate limit exceeded: {current_count}/{rate_limit.count} in {rate_limit.rate_str}"
+                    # Usa l'azione specifica del rate limit invece di sempre REJECT
+                    action_msg = f"{rate_limit.action} Rate limit exceeded: {current_count}/{rate_limit.count} in {rate_limit.rate_str}"
                     if rule_key:
-                        reject_msg += f" for rule {rule_key}"
-                    return False, reject_msg
+                        action_msg += f" for rule {rule_key}"
+                    return False, action_msg
             
             return True, "OK"
             

@@ -12,7 +12,7 @@ from .rate_limit import RateLimit, MultiWindowRateTracker
 from .rate_limit_store import RateLimitStore
 from .logging_service import PolicyLoggingService
 
-__version__ = "1.0.0"
+__version__ = "1.0.2"
 __author__ = "Andrea Bettarini"
 __email__ = "bettarini@monema.it"
 __all__ = ['PolicyDaemon', 'PolicyConfig', 'RateLimit', 'MultiWindowRateTracker', 'RateLimitStore', 'PolicyLoggingService']

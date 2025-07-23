@@ -1,3 +1,8 @@
+pypolicyd (1.0.2-1) unstable; urgency=medium
+  * New policy configuration format
+
+ -- Andrea Bettarini <bettarini@monema.it>  Tue, 22 Jul 2025 16:36:00 +0000
+
 pypolicyd (1.0.0-1) unstable; urgency=medium
 
   * Initial release (renamed from pypolicyd to pypolicyd)

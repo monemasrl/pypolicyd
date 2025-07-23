@@ -70,6 +70,37 @@ class TestRateLimit(unittest.TestCase):
         
         with self.assertRaises(ValueError):
             RateLimit("abc/1m")  # Count non numerico
+        
+        # Test azioni non valide
+        with self.assertRaises(ValueError):
+            RateLimit("5/1m/INVALID_ACTION")
+    
+    def test_parse_rate_limit_with_actions(self):
+        """Test parsing rate limit con azioni specifiche"""
+        # Test DEFER
+        rl_defer = RateLimit("10/5m/DEFER")
+        self.assertEqual(rl_defer.count, 10)
+        self.assertEqual(rl_defer.window_seconds, 300)  # 5 * 60
+        self.assertEqual(rl_defer.action, "DEFER")
+        
+        # Test REJECT
+        rl_reject = RateLimit("100/1h/REJECT")
+        self.assertEqual(rl_reject.count, 100)
+        self.assertEqual(rl_reject.window_seconds, 3600)
+        self.assertEqual(rl_reject.action, "REJECT")
+        
+        # Test DUNNO
+        rl_dunno = RateLimit("50/1d/DUNNO")
+        self.assertEqual(rl_dunno.count, 50)
+        self.assertEqual(rl_dunno.window_seconds, 86400)
+        self.assertEqual(rl_dunno.action, "DUNNO")
+    
+    def test_legacy_format_default_action(self):
+        """Test che il formato legacy usi REJECT come azione di default"""
+        rl = RateLimit("5/1m")  # Formato legacy senza azione
+        self.assertEqual(rl.count, 5)
+        self.assertEqual(rl.window_seconds, 60)
+        self.assertEqual(rl.action, "REJECT")  # Default action
     
     def test_from_config_string(self):
         """Test creazione da stringa di configurazione - RIMOSSO perché API cambiata"""
@@ -125,10 +156,11 @@ class TestMultiWindowRateTracker(unittest.TestCase):
         user = "test@example.com"
         
         # Prima richiesta dovrebbe essere consentita
-        allowed, reason = self.tracker.check_rate_limits(user)
+        allowed, reason, action = self.tracker.check_rate_limits(user)
         
         self.assertTrue(allowed)
         self.assertEqual(reason, "OK")
+        self.assertEqual(action, "DUNNO")
     
     def test_record_request(self):
         """Test registrazione richiesta"""
@@ -140,7 +172,7 @@ class TestMultiWindowRateTracker(unittest.TestCase):
         
         # Verifica che le richieste siano state registrate
         # (questo test è più di integrazione, verifica che non ci siano errori)
-        allowed, reason = self.tracker.check_rate_limits(user)
+        allowed, reason, action = self.tracker.check_rate_limits(user)
         self.assertTrue(allowed)  # Dovrebbe ancora essere sotto il limite di 5/1m
     
     def test_rate_limit_exceeded_simulation(self):
@@ -150,12 +182,12 @@ class TestMultiWindowRateTracker(unittest.TestCase):
         # Simula 6 richieste (supera il limite di 5/1m)
         for i in range(6):
             if i < 5:
-                allowed, reason = self.tracker.check_rate_limits(user)
+                allowed, reason, action = self.tracker.check_rate_limits(user)
                 self.assertTrue(allowed)
                 self.tracker.record_request(user)
             else:
                 # La sesta richiesta dovrebbe essere bloccata
-                allowed, reason = self.tracker.check_rate_limits(user)
+                allowed, reason, action = self.tracker.check_rate_limits(user)
                 # Nota: questo test dipende dal timing reale, potrebbe passare se c'è ritardo
                 # Per un test più affidabile, dovremmo mockare il tempo
     
@@ -169,13 +201,37 @@ class TestMultiWindowRateTracker(unittest.TestCase):
         self.tracker.record_request(user2)
         
         # Entrambi dovrebbero essere sotto i limiti
-        allowed1, reason1 = self.tracker.check_rate_limits(user1)
-        allowed2, reason2 = self.tracker.check_rate_limits(user2)
+        allowed1, reason1, action1 = self.tracker.check_rate_limits(user1)
+        allowed2, reason2, action2 = self.tracker.check_rate_limits(user2)
         
         self.assertTrue(allowed1)
         self.assertTrue(allowed2)
         self.assertEqual(reason1, "OK")
         self.assertEqual(reason2, "OK")
+
+    def test_rate_limit_actions(self):
+        """Test che le azioni specifiche vengano restituite correttamente"""
+        # Crea rate limits con azioni diverse
+        rate_limits_with_actions = [
+            RateLimit("2/1m/DEFER"),    # 2 per minuto con DEFER
+            RateLimit("10/1h/REJECT"),  # 10 per ora con REJECT
+        ]
+        
+        tracker = MultiWindowRateTracker(rate_limits_with_actions)
+        user = "test@example.com"
+        
+        # Prime 2 richieste dovrebbero essere consentite
+        for i in range(2):
+            allowed, reason, action = tracker.check_rate_limits(user)
+            self.assertTrue(allowed)
+            self.assertEqual(action, "DUNNO")
+            tracker.record_request(user)
+        
+        # La terza richiesta dovrebbe essere bloccata con DEFER (primo limite violato)
+        allowed, reason, action = tracker.check_rate_limits(user)
+        self.assertFalse(allowed)
+        self.assertEqual(action, "DEFER")
+        self.assertIn("2/1m/DEFER", reason)
 
 
 class TestHierarchicalRateLimits(unittest.TestCase):
