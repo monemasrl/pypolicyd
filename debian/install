@@ -1,4 +1,11 @@
-usr/lib/python3/dist-packages/pypolicyd /usr/lib/python3/dist-packages/
+usr/lib/python3/dist-packages/pypolicyd/__init__.py /usr/lib/python3/dist-packages/pypolicyd/
+usr/lib/python3/dist-packages/pypolicyd/logging_service.py /usr/lib/python3/dist-packages/pypolicyd/
+usr/lib/python3/dist-packages/pypolicyd/policy_config.py /usr/lib/python3/dist-packages/pypolicyd/
+usr/lib/python3/dist-packages/pypolicyd/rate_limit.py /usr/lib/python3/dist-packages/pypolicyd/
+usr/lib/python3/dist-packages/pypolicyd/smtp-policy-ctl.py /usr/lib/python3/dist-packages/pypolicyd/
+usr/lib/python3/dist-packages/pypolicyd/policy_daemon.py /usr/lib/python3/dist-packages/pypolicyd/
+usr/lib/python3/dist-packages/pypolicyd/rate_limit_store.py /usr/lib/python3/dist-packages/pypolicyd/
+usr/lib/python3/dist-packages/pypolicyd/smtp_policy_daemon.py /usr/lib/python3/dist-packages/pypolicyd/
 pypolicyd /usr/bin/
 pypolicyd-ctl /usr/bin/
 README.md /usr/share/doc/pypolicyd/

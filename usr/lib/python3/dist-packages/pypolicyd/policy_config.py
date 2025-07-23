@@ -129,16 +129,32 @@ class PolicyConfig:
             if self.debug:
                 print(f"[DEBUG] Utente autenticato: {sasl_user}")
             
+            # Se sasl_user non contiene @, ricostruisci l'email completa dal sender
+            if '@' not in sasl_user and sender and '@' in sender:
+                domain = sender.split('@')[1]
+                full_user_email = f"{sasl_user}@{domain}"
+                if self.debug:
+                    print(f"[DEBUG] Ricostruisco email completa: {sasl_user} + {domain} = {full_user_email}")
+            else:
+                full_user_email = sasl_user
+            
             # Cerca regola specifica per utente (utente esatto)
-            if sasl_user in rules:
+            if full_user_email in rules:
+                policy = rules[full_user_email]
+                if self.debug:
+                    print(f"[DEBUG] Trovata regola utente esatta: {full_user_email} -> {policy}")
+                return policy, full_user_email
+            
+            # Cerca anche la versione originale di sasl_user (per backward compatibility)
+            if sasl_user != full_user_email and sasl_user in rules:
                 policy = rules[sasl_user]
                 if self.debug:
-                    print(f"[DEBUG] Trovata regola utente esatta: {sasl_user} -> {policy}")
+                    print(f"[DEBUG] Trovata regola utente esatta (legacy): {sasl_user} -> {policy}")
                 return policy, sasl_user
             
             # Cerca regola per dominio utente (wildcard *@dominio)
-            if '@' in sasl_user:
-                domain = sasl_user.split('@')[1]
+            if '@' in full_user_email:
+                domain = full_user_email.split('@')[1]
                 domain_pattern = f"*@{domain}"
                 
                 if domain_pattern in rules:
@@ -248,16 +264,32 @@ class PolicyConfig:
             if self.debug:
                 print(f"[DEBUG] Utente autenticato: {sasl_user}")
             
+            # Se sasl_user non contiene @, ricostruisci l'email completa dal sender
+            if '@' not in sasl_user and sender and '@' in sender:
+                domain = sender.split('@')[1]
+                full_user_email = f"{sasl_user}@{domain}"
+                if self.debug:
+                    print(f"[DEBUG] Ricostruisco email completa: {sasl_user} + {domain} = {full_user_email}")
+            else:
+                full_user_email = sasl_user
+            
             # 1. Cerca regola specifica per utente (più prioritaria)
-            if sasl_user in rules:
+            if full_user_email in rules:
+                policy = rules[full_user_email]
+                applicable_policies.append((policy, full_user_email))
+                if self.debug:
+                    print(f"[DEBUG] Aggiunta regola utente esatta: {full_user_email} -> {policy}")
+            
+            # Cerca anche la versione originale di sasl_user (per backward compatibility)
+            if sasl_user != full_user_email and sasl_user in rules:
                 policy = rules[sasl_user]
                 applicable_policies.append((policy, sasl_user))
                 if self.debug:
-                    print(f"[DEBUG] Aggiunta regola utente esatta: {sasl_user} -> {policy}")
+                    print(f"[DEBUG] Aggiunta regola utente esatta (legacy): {sasl_user} -> {policy}")
             
             # 2. Cerca regola per dominio utente (wildcard *@dominio)
-            if '@' in sasl_user:
-                domain = sasl_user.split('@')[1]
+            if '@' in full_user_email:
+                domain = full_user_email.split('@')[1]
                 domain_pattern = f"*@{domain}"
                 
                 if domain_pattern in rules:
