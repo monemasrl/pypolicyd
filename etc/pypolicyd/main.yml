@@ -9,7 +9,7 @@ daemon:
   log_level: "INFO"
   host: "127.0.0.1"
   port: 10040
-  database: "/var/lib/pypolicyd/policy.db" 
+  # database: "/var/lib/pypolicyd/policy.db" 
   max_connections: 100
   # Configurazione logging SMTP
   # Opzioni di output log (scegli una):
@@ -19,6 +19,11 @@ daemon:
   log_to_syslog: true
   syslog_facility: "mail"  # mail, daemon, user, local0-local7
   # 3. Default: stdout (commenta sia log_file che log_to_syslog)
+  redis_host: "localhost"
+  redis_port: 6379
+  redis_db: 0
+  # redis_password: "your_redis_password"  # opzionale
+  redis_key_prefix: "pypolicyd:ratelimit:"
   
   # Configurazione dettagli logging
   log_request: "all"       # all, rejected, none

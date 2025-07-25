@@ -39,8 +39,19 @@ class PolicyDaemon:
         # Directory regole policy - solo directory supportata
         self.rules_dir = daemon_config.get('policy_rules_file', '/etc/pypolicyd/policy-rules.d')
         
-        # Store SQLite
-        self.rate_limit_store = RateLimitStore(self.db_path)
+        # Rate limit store - supporta SQLite e Redis
+        store_config = {
+            'type': daemon_config.get('rate_limit_store_type', 'sqlite'),
+            'db_path': self.db_path,
+            # Configurazione Redis
+            'redis_host': daemon_config.get('redis_host', 'localhost'),
+            'redis_port': daemon_config.get('redis_port', 6379),
+            'redis_db': daemon_config.get('redis_db', 0),
+            'redis_password': daemon_config.get('redis_password', None),
+            'key_prefix': daemon_config.get('redis_key_prefix', 'pypolicyd:ratelimit:')
+        }
+        
+        self.rate_limit_store = RateLimitStore.create(store_config)
         
         # Configura servizio di logging
         self.logging_service = PolicyLoggingService(daemon_config, debug=self.debug)

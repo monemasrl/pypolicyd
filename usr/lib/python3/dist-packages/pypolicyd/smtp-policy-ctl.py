@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 SMTP Policy Daemon Management Script
-Utilità per gestire il daemon di policy SMTP
+Utilità per gestire il daemon di policy SMTP - supporta SQLite e Redis
 """
 
 import argparse
@@ -10,8 +10,15 @@ import yaml
 import sys
 import os
 import signal
+import json
 from datetime import datetime, timedelta
 from pathlib import Path
+
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
 
 def get_daemon_pid():
     """Ottiene il PID del daemon se attivo"""
@@ -36,15 +43,41 @@ def reload_config():
         print("Daemon non in esecuzione")
         return False
 
-def show_stats(db_path):
-    """Mostra statistiche rate limiting"""
+def show_stats(db_path_or_config):
+    """Mostra statistiche rate limiting (SQLite o Redis)"""
+    
+    # Determina se è un path SQLite o configurazione YAML
+    if db_path_or_config.endswith('.db'):
+        show_sqlite_stats(db_path_or_config)
+    else:
+        # Prova a caricare come configurazione YAML
+        try:
+            with open(db_path_or_config, 'r') as f:
+                config = yaml.safe_load(f)
+            
+            daemon_config = config.get('daemon', {})
+            store_type = daemon_config.get('rate_limit_store_type', 'sqlite')
+            
+            if store_type == 'redis':
+                show_redis_stats(daemon_config)
+            else:
+                sqlite_path = daemon_config.get('database', '/var/lib/pypolicyd/rate_limits.db')
+                show_sqlite_stats(sqlite_path)
+                
+        except Exception as e:
+            print(f"Errore caricamento configurazione: {e}")
+            # Fallback: tratta come path SQLite
+            show_sqlite_stats(db_path_or_config)
+
+def show_sqlite_stats(db_path):
+    """Mostra statistiche SQLite"""
     if not os.path.exists(db_path):
-        print("Database non trovato")
+        print("Database SQLite non trovato")
         return
     
     conn = sqlite3.connect(db_path)
     
-    print("=== Statistiche Rate Limiting ===")
+    print("=== Statistiche Rate Limiting (SQLite) ===")
     
     # Top utenti per invii
     print("\nTop 10 utenti per numero invii:")
@@ -79,23 +112,152 @@ def show_stats(db_path):
     
     conn.close()
 
-def reset_user_limits(db_path, username):
-    """Reset limiti per un utente specifico"""
+def show_redis_stats(config):
+    """Mostra statistiche Redis"""
+    if not REDIS_AVAILABLE:
+        print("Redis library non disponibile")
+        return
+    
+    try:
+        r = redis.Redis(
+            host=config.get('redis_host', 'localhost'),
+            port=config.get('redis_port', 6379),
+            db=config.get('redis_db', 0),
+            password=config.get('redis_password', None),
+            decode_responses=True
+        )
+        
+        # Test connessione
+        r.ping()
+        
+        print("=== Statistiche Rate Limiting (Redis) ===")
+        
+        key_prefix = config.get('redis_key_prefix', 'pypolicyd:ratelimit:')
+        pattern = f"{key_prefix}*"
+        keys = r.keys(pattern)
+        
+        print(f"\nChiavi attive totali: {len(keys)}")
+        
+        if keys:
+            print("\nTop rate limits attivi:")
+            
+            # Analizza le chiavi e raggruppa per utente
+            user_stats = {}
+            
+            for key in keys[:50]:  # Limita per performance
+                try:
+                    data = r.get(key)
+                    if data:
+                        parsed = json.loads(data)
+                        ttl = r.ttl(key)
+                        
+                        # Estrai nome utente dalla chiave
+                        clean_key = key.replace(key_prefix, '')
+                        if ':' in clean_key:
+                            user_key = clean_key.split(':')[0]
+                        else:
+                            user_key = clean_key
+                        
+                        if user_key not in user_stats:
+                            user_stats[user_key] = []
+                        
+                        user_stats[user_key].append({
+                            'key': clean_key,
+                            'count': parsed.get('count', 0),
+                            'ttl': ttl,
+                            'first_seen': parsed.get('first_seen', ''),
+                            'last_seen': parsed.get('last_seen', '')
+                        })
+                except Exception as e:
+                    continue
+            
+            # Mostra statistiche per utente
+            for user, stats in sorted(user_stats.items())[:10]:
+                total_count = sum(stat['count'] for stat in stats)
+                print(f"\n  {user}: {total_count} richieste totali")
+                for stat in stats[:3]:  # Mostra max 3 rate limits per utente
+                    print(f"    {stat['key']}: {stat['count']} (TTL: {stat['ttl']}s)")
+        
+        # Statistiche Redis generali
+        info = r.info()
+        print(f"\nInfo Redis:")
+        print(f"  Database size: {info.get('db0', {}).get('keys', 0)} chiavi totali")
+        print(f"  Memoria usata: {info.get('used_memory_human', 'N/A')}")
+        
+    except redis.ConnectionError:
+        print("❌ Impossibile connettersi a Redis")
+    except Exception as e:
+        print(f"❌ Errore Redis: {e}")
+
+def reset_user_limits(db_path_or_config, username):
+    """Reset limiti per un utente specifico (SQLite o Redis)"""
+    
+    # Determina se è SQLite o configurazione Redis
+    if db_path_or_config.endswith('.db'):
+        reset_sqlite_user_limits(db_path_or_config, username)
+    else:
+        try:
+            with open(db_path_or_config, 'r') as f:
+                config = yaml.safe_load(f)
+            
+            daemon_config = config.get('daemon', {})
+            store_type = daemon_config.get('rate_limit_store_type', 'sqlite')
+            
+            if store_type == 'redis':
+                reset_redis_user_limits(daemon_config, username)
+            else:
+                sqlite_path = daemon_config.get('database', '/var/lib/pypolicyd/rate_limits.db')
+                reset_sqlite_user_limits(sqlite_path, username)
+                
+        except Exception as e:
+            print(f"Errore: {e}")
+
+def reset_sqlite_user_limits(db_path, username):
+    """Reset limiti SQLite per un utente"""
     if not os.path.exists(db_path):
         print("Database non trovato")
         return
     
     conn = sqlite3.connect(db_path)
     
-    # Reset limiti orari e giornalieri
-    conn.execute('DELETE FROM rate_limits WHERE key IN (?, ?)', 
-                (f'hourly:{username}', f'daily:{username}'))
+    # Reset tutti i limiti dell'utente
+    cursor = conn.execute('DELETE FROM rate_limits WHERE key LIKE ?', (f'%{username}%',))
+    deleted = cursor.rowcount
     
-    rows_affected = conn.total_changes
     conn.commit()
     conn.close()
     
-    print(f"Reset limiti per {username} ({rows_affected} record rimossi)")
+    print(f"Reset {deleted} rate limits per {username}")
+
+def reset_redis_user_limits(config, username):
+    """Reset limiti Redis per un utente"""
+    if not REDIS_AVAILABLE:
+        print("Redis library non disponibile")
+        return
+    
+    try:
+        r = redis.Redis(
+            host=config.get('redis_host', 'localhost'),
+            port=config.get('redis_port', 6379),
+            db=config.get('redis_db', 0),
+            password=config.get('redis_password', None),
+            decode_responses=True
+        )
+        
+        key_prefix = config.get('redis_key_prefix', 'pypolicyd:ratelimit:')
+        pattern = f"{key_prefix}*{username}*"
+        keys = r.keys(pattern)
+        
+        if keys:
+            deleted = r.delete(*keys)
+            print(f"Reset {deleted} rate limits per {username} da Redis")
+        else:
+            print(f"Nessun rate limit trovato per {username} in Redis")
+            
+    except redis.ConnectionError:
+        print("❌ Impossibile connettersi a Redis")
+    except Exception as e:
+        print(f"❌ Errore Redis: {e}")
 
 def cleanup_expired(db_path):
     """Rimuove record scaduti dal database"""
@@ -262,11 +424,24 @@ def main():
     if args.command == 'reload':
         reload_config()
     elif args.command == 'stats':
-        show_stats(args.database)
+        show_stats(args.config)  # Usa config invece di database
     elif args.command == 'reset':
-        reset_user_limits(args.database, args.username)
+        reset_user_limits(args.config, args.username)  # Usa config invece di database
     elif args.command == 'cleanup':
-        cleanup_expired(args.database)
+        # Per cleanup, determina il tipo di store dalla configurazione
+        try:
+            with open(args.config, 'r') as f:
+                config = yaml.safe_load(f)
+            daemon_config = config.get('daemon', {})
+            store_type = daemon_config.get('rate_limit_store_type', 'sqlite')
+            
+            if store_type == 'redis':
+                print("Cleanup non necessario per Redis (TTL automatico)")
+            else:
+                db_path = daemon_config.get('database', args.database)
+                cleanup_expired(db_path)
+        except Exception as e:
+            print(f"Errore durante cleanup: {e}")
     elif args.command == 'test-config':
         test_config(args.config)
     elif args.command == 'show-policy':
